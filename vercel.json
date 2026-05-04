@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/schemas/vercel-api.json",
+  "builds": [
+    {
+      "src": "api/app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/app.py"
+    }
+  ]
+}
