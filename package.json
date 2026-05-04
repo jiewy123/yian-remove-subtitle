@@ -1,12 +1,1 @@
-{
-  "name": "vercel-api",
-  "version": "1.0.0",
-  "description": "```bash # 1. 安装 Vercel CLI npm i -g vercel",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
-}
+{"name": "yian-remove-subtitle-api", "version": "1.0.0", "description": "宜安去字幕 API", "main": "api/index.js"}
