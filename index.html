@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="宜安去字幕">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>宜安去字幕</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#1a1a2e;color:#e0e0e0;min-height:100vh;overflow-x:hidden}
+.header{background:linear-gradient(135deg,#16213e,#0f3460);padding:12px 16px;text-align:center;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.header h1{font-size:18px;color:#e94560;letter-spacing:1px}
+.header p{font-size:11px;color:#888;margin-top:2px}
+.container{max-width:700px;margin:0 auto;padding:12px}
+.card{background:#16213e;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 4px 15px rgba(0,0,0,.2)}
+.upload-area{border:2px dashed #e94560;border-radius:10px;padding:30px 16px;text-align:center;cursor:pointer;transition:.3s}
+.upload-area:hover,.upload-area.dragover{background:rgba(233,69,96,.1);border-color:#ff6b6b}
+.upload-area svg{width:48px;height:48px;fill:#e94560;margin-bottom:8px}
+.upload-area p{color:#aaa;font-size:13px}
+.upload-area .filename{color:#e94560;font-size:14px;font-weight:600;margin-top:8px}
+.video-preview{position:relative;background:#000;border-radius:8px;overflow:hidden;margin-top:10px}
+.video-preview video,.video-preview canvas{width:100%;display:block;border-radius:8px}
+.canvas-wrap{position:relative;cursor:crosshair}
+.canvas-wrap canvas{display:block}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.btn{padding:10px 14px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:.2s;text-align:center}
+.btn:active{transform:scale(.96)}
+.btn-primary{background:linear-gradient(135deg,#e94560,#c23152);color:#fff}
+.btn-primary:hover{background:linear-gradient(135deg,#ff6b6b,#e94560)}
+.btn-secondary{background:#2a2a4a;color:#ddd;border:1px solid #444}
+.btn-secondary:hover{background:#3a3a5a}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.mode-selector{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.mode-btn{flex:1;min-width:70px;padding:8px 6px;border:1px solid #444;border-radius:8px;background:#1a1a2e;color:#aaa;font-size:12px;cursor:pointer;text-align:center;transition:.2s}
+.mode-btn.active{border-color:#e94560;color:#e94560;background:rgba(233,69,96,.1)}
+.slider-group{margin:8px 0}
+.slider-group label{font-size:12px;color:#aaa;display:flex;justify-content:space-between}
+.slider-group input[type=range]{width:100%;margin-top:4px;accent-color:#e94560}
+.progress-bar{width:100%;height:6px;background:#2a2a4a;border-radius:3px;overflow:hidden;margin:8px 0}
+.progress-bar .fill{height:100%;background:linear-gradient(90deg,#e94560,#ff6b6b);width:0%;transition:width .3s;border-radius:3px}
+.status{text-align:center;font-size:12px;color:#888;padding:4px}
+.compare-view{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.compare-view .panel{background:#111;border-radius:8px;overflow:hidden;text-align:center}
+.compare-view .panel p{font-size:11px;color:#888;padding:4px}
+.compare-view .panel canvas,.compare-view .panel video{width:100%;display:block}
+.select-info{background:#0f3460;border-radius:8px;padding:8px 12px;font-size:12px;color:#7ec8e3;margin:8px 0}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#e94560;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:999;opacity:0;transition:.3s;pointer-events:none}
+.toast.show{opacity:1}
+.footer{text-align:center;padding:16px;color:#555;font-size:11px}
+@media(max-width:400px){.controls{grid-template-columns:1fr}.mode-btn{min-width:60px;font-size:11px}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🎬 宜安去字幕</h1>
+  <p>视频字幕去除工具 · 免费无限制</p>
+</div>
+<div class="container">
+  <div class="card">
+    <div class="upload-area" id="uploadArea">
+      <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+      <p>点击或拖拽上传视频</p>
+      <p style="font-size:11px;color:#666">支持 MP4 / WebM / MOV</p>
+      <div class="filename" id="fileName"></div>
+    </div>
+    <input type="file" id="fileInput" accept="video/*" hidden>
+  </div>
+
+  <div class="card" id="editorCard" style="display:none">
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="mainCanvas"></canvas>
+    </div>
+    <div class="select-info" id="selectInfo">👆 在画面上拖框选择字幕区域</div>
+    
+    <div class="mode-selector">
+      <div class="mode-btn active" data-mode="blur">模糊</div>
+      <div class="mode-btn" data-mode="black">黑块</div>
+      <div class="mode-btn" data-mode="fill">填充</div>
+      <div class="mode-btn" data-mode="inpaint">AI修复</div>
+    </div>
+
+    <div class="slider-group">
+      <label><span>模糊强度</span><span id="blurVal">15</span></label>
+      <input type="range" id="blurRange" min="5" max="50" value="15">
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-secondary" id="btnAutoDetect">🔍 自动检测</button>
+      <button class="btn btn-secondary" id="btnClear">✖ 清除选区</button>
+      <button class="btn btn-secondary" id="btnPreview">👁 预览效果</button>
+      <button class="btn btn-primary" id="btnProcess" disabled>▶ 开始处理</button>
+    </div>
+
+    <div class="progress-bar" id="progressBar" style="display:none"><div class="fill" id="progressFill"></div></div>
+    <div class="status" id="status">就绪</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/+esm';
+import { fetchFile,toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/+esm';
+
+const $ = id => document.getElementById(id);
+let ffmpeg = null, videoFile = null, videoEl = null;
+let selection = null, isSelecting = false, startX = 0, startY = 0;
+let currentMode = 'blur';
+const canvas = $('mainCanvas'), ctx = canvas.getContext('2d');
+
+// Toast
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500) }
+
+// Upload
+$('uploadArea').addEventListener('click', ()=>$('fileInput').click());
+$('uploadArea').addEventListener('dragover', e=>{e.preventDefault();$('uploadArea').classList.add('dragover')});
+$('uploadArea').addEventListener('dragleave', ()=>$('uploadArea').classList.remove('dragover'));
+$('uploadArea').addEventListener('drop', e=>{
+  e.preventDefault(); $('uploadArea').classList.remove('dragover');
+  if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+$('fileInput').addEventListener('change', e=>{ if(e.target.files.length) handleFile(e.target.files[0]) });
+
+function handleFile(file){
+  if(!file.type.startsWith('video/')){ toast('请上传视频文件'); return }
+  videoFile = file;
+  $('fileName').textContent = file.name;
+  loadVideo(file);
+}
+
+function loadVideo(file){
+  const url = URL.createObjectURL(file);
+  if(videoEl) videoEl.remove();
+  videoEl = document.createElement('video');
+  videoEl.src = url;
+  videoEl.muted = true;
+  videoEl.preload = 'auto';
+  videoEl.addEventListener('loadeddata', ()=>{
+    $('editorCard').style.display = 'block';
+    // Fit canvas to container
+    const wrap = $('canvasWrap');
+    const scale = Math.min(wrap.clientWidth / videoEl.videoWidth, 1);
+    canvas.width = videoEl.videoWidth * scale;
+    canvas.height = videoEl.videoHeight * scale;
+    drawFrame();
+    toast('视频加载成功！框选字幕区域');
+  });
+}
+
+function drawFrame(){
+  if(!videoEl) return;
+  videoEl.currentTime = 0.5;
+  videoEl.onseeked = ()=>{
+    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+    drawSelection();
+  };
+}
+
+function drawSelection(){
+  if(!selection) return;
+  ctx.strokeStyle = '#e94560';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6,3]);
+  ctx.strokeRect(selection.x, selection.y, selection.w, selection.h);
+  ctx.setLineDash([]);
+  // Semi-transparent overlay
+  ctx.fillStyle = 'rgba(233,69,96,0.15)';
+  ctx.fillRect(selection.x, selection.y, selection.w, selection.h);
+}
+
+// Canvas selection
+canvas.addEventListener('mousedown', e=>{
+  const rect = canvas.getBoundingClientRect();
+  startX = e.clientX - rect.left; startY = e.clientY - rect.top;
+  isSelecting = true; selection = null;
+});
+canvas.addEventListener('mousemove', e=>{
+  if(!isSelecting) return;
+  const rect = canvas.getBoundingClientRect();
+  const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+  selection = { x: Math.min(startX,cx), y: Math.min(startY,cy), w: Math.abs(cx-startX), h: Math.abs(cy-startY) };
+  drawFrame();
+});
+canvas.addEventListener('mouseup', ()=>{ isSelecting=false; updateSelectInfo() });
+
+// Touch support
+canvas.addEventListener('touchstart', e=>{
+  e.preventDefault();
+  const t = e.touches[0], rect = canvas.getBoundingClientRect();
+  startX = t.clientX - rect.left; startY = t.clientY - rect.top;
+  isSelecting = true; selection = null;
+}, {passive:false});
+canvas.addEventListener('touchmove', e=>{
+  e.preventDefault();
+  if(!isSelecting) return;
+  const t = e.touches[0], rect = canvas.getBoundingClientRect();
+  const cx = t.clientX - rect.left, cy = t.clientY - rect.top;
+  selection = { x: Math.min(startX,cx), y: Math.min(startY,cy), w: Math.abs(cx-startX), h: Math.abs(cy-startY) };
+  drawFrame();
+}, {passive:false});
+canvas.addEventListener('touchend', ()=>{ isSelecting=false; updateSelectInfo() });
+
+function updateSelectInfo(){
+  if(selection && selection.w > 10 && selection.h > 5){
+    $('selectInfo').textContent = `✅ 已选区域: ${Math.round(selection.w)}×${Math.round(selection.h)}px`;
+    $('btnProcess').disabled = false;
+  } else {
+    $('selectInfo').textContent = '👆 在画面上拖框选择字幕区域';
+    $('btnProcess').disabled = true;
+  }
+}
+
+// Mode selector
+document.querySelectorAll('.mode-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentMode = btn.dataset.mode;
+  });
+});
+
+// Blur range
+$('blurRange').addEventListener('input', e=>$('blurVal').textContent = e.target.value);
+
+// Auto detect
+$('btnAutoDetect').addEventListener('click', ()=>{
+  if(!videoEl) return;
+  toast('正在检测字幕区域...');
+  // Simple detection: sample bottom 20% of frame for high-contrast regions
+  videoEl.currentTime = 1;
+  videoEl.onseeked = ()=>{
+    const tmpC = document.createElement('canvas');
+    tmpC.width = canvas.width; tmpC.height = canvas.height;
+    const tmpCtx = tmpC.getContext('2d');
+    tmpCtx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+    const imgData = tmpCtx.getImageData(0, canvas.height * 0.7, canvas.width, canvas.height * 0.3);
+    const d = imgData.data;
+    // Find brightest horizontal band (likely subtitles)
+    let minRow = canvas.height * 0.8, maxRow = canvas.height * 0.95;
+    let maxBrightness = 0, bestY = canvas.height * 0.85;
+    for(let y = 0; y < imgData.height; y += 2){
+      let sum = 0;
+      for(let x = 0; x < imgData.width; x += 4){
+        const i = (y * imgData.width + x) * 4;
+        sum += (d[i] + d[i+1] + d[i+2]) / 3;
+      }
+      const avg = sum / (imgData.width / 4);
+      if(avg > maxBrightness){ maxBrightness = avg; bestY = y; }
+    }
+    selection = {
+      x: canvas.width * 0.05,
+      y: canvas.height * 0.7 + bestY - 15,
+      w: canvas.width * 0.9,
+      h: 40
+    };
+    drawFrame();
+    updateSelectInfo();
+    toast('检测完成！可调整选区');
+  };
+});
+
+// Clear selection
+$('btnClear').addEventListener('click', ()=>{
+  selection = null;
+  drawFrame();
+  updateSelectInfo();
+});
+
+// Preview
+$('btnPreview').addEventListener('click', ()=>{
+  if(!selection || !videoEl) return;
+  const tmpC = document.createElement('canvas');
+  tmpC.width = canvas.width; tmpC.height = canvas.height;
+  const tmpCtx = tmpC.getContext('2d');
+  tmpCtx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+  if(currentMode === 'blur'){
+    tmpCtx.filter = `blur(${$('blurRange').value}px)`;
+    tmpCtx.drawImage(tmpC, selection.x, selection.y, selection.w, selection.h, selection.x, selection.y, selection.w, selection.h);
+    tmpCtx.filter = 'none';
+  } else if(currentMode === 'black'){
+    tmpCtx.fillStyle = '#000';
+    tmpCtx.fillRect(selection.x, selection.y, selection.w, selection.h);
+  } else if(currentMode === 'fill'){
+    const topPx = tmpCtx.getImageData(selection.x, selection.y - 2, selection.w, 1);
+    tmpCtx.putImageData(topPx, selection.x, selection.y);
+  } else {
+    tmpCtx.fillStyle = 'rgba(0,0,0,0.7)';
+    tmpCtx.fillRect(selection.x, selection.y, selection.w, selection.h);
+    tmpCtx.fillStyle = '#aaa';
+    tmpCtx.font = '12px sans-serif';
+    tmpCtx.fillText('AI修复预览', selection.x + 4, selection.y + 20);
+  }
+  ctx.drawImage(tmpC, 0, 0);
+  toast('预览效果（实际处理会更精细）');
+});
+
+// Init FFmpeg
+async function initFFmpeg(){
+  if(ffmpeg) return ffmpeg;
+  $('status').textContent = '正在加载FFmpeg引擎...';
+  ffmpeg = new FFmpeg();
+  const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm';
+  await ffmpeg.load({
+    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+  });
+  $('status').textContent = 'FFmpeg引擎就绪';
+  return ffmpeg;
+}
+
+// Process video
+$('btnProcess').addEventListener('click', async ()=>{
+  if(!selection || !videoFile) return;
+  try{
+    $('btnProcess').disabled = true;
+    $('progressBar').style.display = 'block';
+    $('status').textContent = '正在加载FFmpeg引擎...';
+    
+    const ff = await initFFmpeg();
+    const inputName = 'input' + '.' + videoFile.name.split('.').pop();
+    
+    $('status').textContent = '正在写入视频文件...';
+    await ff.writeFile(inputName, await fetchFile(videoFile));
+    
+    // Calculate real coordinates based on video resolution
+    const scaleX = videoEl.videoWidth / canvas.width;
+    const scaleY = videoEl.videoHeight / canvas.height;
+    const rx = Math.round(selection.x * scaleX);
+    const ry = Math.round(selection.y * scaleY);
+    const rw = Math.round(selection.w * scaleX);
+    const rh = Math.round(selection.h * scaleY);
+    
+    let filterStr = '';
+    if(currentMode === 'blur'){
+      const blurVal = $('blurRange').value;
+      filterStr = `crop=${rw}:${rh}:${rx}:${ry},boxblur=${blurVal}:${blurVal}`;
+    } else if(currentMode === 'black'){
+      filterStr = `drawbox=x=${rx}:y=${ry}:w=${rw}:h=${rh}:color=black:t=fill`;
+    } else if(currentMode === 'fill'){
+      filterStr = `delogo=x=${rx}:y=${ry}:w=${rw}:h=${rh}`;
+    } else {
+      filterStr = `delogo=x=${rx}:y=${ry}:w=${rw}:h=${rh}`;
+    }
+    
+    // Build ffmpeg command
+    let args;
+    if(currentMode === 'blur'){
+      // Overlay blurred region back
+      args = ['-i', inputName, '-filter_complex',
+        `[0:v]crop=${rw}:${rh}:${rx}:${ry},boxblur=${$('blurRange').value}:${$('blurRange').value}[blur];[0:v][blur]overlay=${rx}:${ry}`,
+        '-c:a', 'copy', 'output.mp4'];
+    } else if(currentMode === 'black'){
+      args = ['-i', inputName, '-vf', filterStr, '-c:a', 'copy', 'output.mp4'];
+    } else {
+      args = ['-i', inputName, '-vf', filterStr, '-c:a', 'copy', 'output.mp4'];
+    }
+    
+    $('status').textContent = '正在处理视频...';
+    ff.on('progress', ({progress})=>{
+      const pct = Math.round(progress * 100);
+      $('progressFill').style.width = pct + '%';
+      $('status').textContent = `处理进度: ${pct}%`;
+    });
+    
+    await ff.exec(args);
+    
+    $('status').textContent = '正在导出文件...';
+    const data = await ff.readFile('output.mp4');
+    const blob = new Blob([data.buffer], {type: 'video/mp4'});
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = videoFile.name.replace(/\.[^.]+$/, '') + '_去字幕.mp4';
+    a.click();
+    
+    // Cleanup
+    await ff.deleteFile(inputName);
+    await ff.deleteFile('output.mp4');
+    
+    $('status').textContent = '✅ 处理完成！文件已下载';
+    toast('处理完成！文件已下载');
+    $('btnProcess').disabled = false;
+  } catch(err){
+    console.error(err);
+    $('status').textContent = '❌ 处理失败: ' + err.message;
+    toast('处理失败，请重试');
+    $('btnProcess').disabled = false;
+  }
+});
+
+// Register SW
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>

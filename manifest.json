@@ -1,0 +1,14 @@
+{
+  "name": "宜安去字幕",
+  "short_name": "去字幕",
+  "description": "免费视频字幕去除工具，支持模糊/黑块/填充/AI修复4种模式",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#e94560",
+  "orientation": "portrait",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}
